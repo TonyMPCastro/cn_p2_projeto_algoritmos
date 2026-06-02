@@ -1,6 +1,7 @@
 import unittest
 
 from src.interpolacao import (
+    interpolar_gregory_newton,
     interpolar_lagrange,
     interpolar_newton,
 )
@@ -13,12 +14,89 @@ class TestInterpolacao(unittest.TestCase):
 
         self.assertAlmostEqual(resultado, 6.25)
 
+    def test_interpolar_lagrange_com_contagem_de_operacoes(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado, operacoes = interpolar_lagrange(
+            pontos,
+            2.5,
+            contar_operacoes=True,
+        )
+
+        self.assertAlmostEqual(resultado, 6.25)
+        self.assertEqual(
+            operacoes,
+            {
+                "multiplicacoes": 6,
+                "adicoes": 15,
+            },
+        )
+
     def test_interpolar_newton_com_parabola(self):
         pontos = [(1, 1), (2, 4), (3, 9)]
 
         resultado = interpolar_newton(pontos, 2.5)
 
         self.assertAlmostEqual(resultado, 6.25)
+
+    def test_interpolar_newton_com_contagem_de_operacoes(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado, operacoes = interpolar_newton(
+            pontos,
+            2.5,
+            contar_operacoes=True,
+        )
+
+        self.assertAlmostEqual(resultado, 6.25)
+        self.assertEqual(
+            operacoes,
+            {
+                "multiplicacoes": 4,
+                "adicoes": 10,
+            },
+        )
+
+    def test_interpolar_gregory_newton_progressivo_com_parabola(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado = interpolar_gregory_newton(pontos, 1.5)
+
+        self.assertAlmostEqual(resultado, 2.25)
+
+    def test_interpolar_gregory_newton_regressivo_com_parabola(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado = interpolar_gregory_newton(pontos, 2.5)
+
+        self.assertAlmostEqual(resultado, 6.25)
+
+    def test_interpolar_gregory_newton_com_contagem_de_operacoes(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado, operacoes = interpolar_gregory_newton(
+            pontos,
+            2.5,
+            contar_operacoes=True,
+        )
+
+        self.assertAlmostEqual(resultado, 6.25)
+        self.assertEqual(
+            operacoes,
+            {
+                "multiplicacoes": 4,
+                "adicoes": 8,
+            },
+        )
+
+    def test_interpolar_gregory_newton_ordena_sem_alterar_pontos(self):
+        pontos = [(3, 9), (1, 1), (2, 4)]
+        pontos_originais = pontos[:]
+
+        resultado = interpolar_gregory_newton(pontos, 2.5)
+
+        self.assertAlmostEqual(resultado, 6.25)
+        self.assertEqual(pontos, pontos_originais)
 
     def test_interpolacao_do_drone(self):
         pontos = [
@@ -31,9 +109,23 @@ class TestInterpolacao(unittest.TestCase):
 
         resultado_lagrange = interpolar_lagrange(pontos, 3.5)
         resultado_newton = interpolar_newton(pontos, 3.5)
+        resultado_gregory_newton = interpolar_gregory_newton(pontos, 3.5)
 
         self.assertAlmostEqual(resultado_lagrange, 4.2390625)
         self.assertAlmostEqual(resultado_newton, 4.2390625)
+        self.assertAlmostEqual(resultado_gregory_newton, 4.2390625)
+
+    def test_interpolacao_do_servidor_por_gregory_newton(self):
+        pontos = [
+            (10, 45.0),
+            (20, 52.0),
+            (30, 60.0),
+            (40, 71.0),
+        ]
+
+        resultado = interpolar_gregory_newton(pontos, 25, h=10)
+
+        self.assertAlmostEqual(resultado, 55.75)
 
     def test_interpolar_lagrange_exige_dois_pontos(self):
         with self.assertRaises(ValueError):
@@ -44,6 +136,18 @@ class TestInterpolacao(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             interpolar_lagrange(pontos, 1.5)
+
+    def test_interpolar_gregory_newton_rejeita_espacamento_irregular(self):
+        pontos = [(1, 1), (2, 4), (4, 16)]
+
+        with self.assertRaises(ValueError):
+            interpolar_gregory_newton(pontos, 2.5)
+
+    def test_interpolar_gregory_newton_rejeita_h_incorreto(self):
+        pontos = [(10, 45.0), (20, 52.0), (30, 60.0), (40, 71.0)]
+
+        with self.assertRaises(ValueError):
+            interpolar_gregory_newton(pontos, 25, h=5)
 
 if __name__ == "__main__":
     unittest.main()

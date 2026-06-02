@@ -6,7 +6,7 @@ de dados nativas da linguagem Python.
 
 Ao final da unidade, o pacote computacional devera ser capaz de interpolar dados
 e calcular integrais numericas. Nesta primeira versao, o foco esta na
-interpolacao polinomial pelos metodos de Lagrange e Newton.
+interpolacao polinomial pelos metodos de Lagrange, Newton e Gregory-Newton.
 
 ## Objetivos
 
@@ -30,20 +30,23 @@ cn_p2_projeto_algoritmos/
     +-- test_interpolacao.py
 ```
 
-## Interpolacao de Lagrange e Newton
+## Interpolacao de Lagrange, Newton e Gregory-Newton
 
 A interpolacao e usada para estimar o valor de uma funcao em um ponto
 desconhecido a partir de pontos conhecidos.
 
 O metodo de Lagrange constroi um polinomio que passa por todos os pontos
 informados. O metodo de Newton usa diferencas divididas para montar o mesmo
-polinomio por coeficientes.
+polinomio por coeficientes. O metodo de Gregory-Newton usa diferencas finitas
+e exige pontos igualmente espacados. Nesse metodo, `h` pode ser informado
+explicitamente.
 
 As principais funcoes deste projeto sao:
 
 ```python
 interpolar_lagrange(pontos, x)
 interpolar_newton(pontos, x)
+interpolar_gregory_newton(pontos, x, h=10)
 ```
 
 Elas recebem:
@@ -51,18 +54,25 @@ Elas recebem:
 - `pontos`: lista de tuplas no formato `(x, y)`;
 - `x`: valor onde se deseja calcular a interpolacao.
 
+Tambem e possivel pedir a contagem de operacoes com
+`contar_operacoes=True`. Nesse caso a funcao retorna
+`(resultado, operacoes)`, e `operacoes` informa quantas multiplicacoes e
+adicoes/subtracoes foram feitas.
+
 Exemplo:
 
 ```python
 pontos = [(1, 1), (2, 4), (3, 9)]
 x = 2.5
-resultado = interpolar_lagrange(pontos, x)
+resultado, operacoes = interpolar_lagrange(pontos, x, contar_operacoes=True)
 ```
 
 Saida esperada:
 
 ```text
 Valor interpolado em x = 2.5: 6.25
+Multiplicacoes: 6
+Adicoes/subtracoes: 15
 ```
 
 O exemplo tambem exibe um grafico ASCII no terminal. A curva interpolada aparece
@@ -71,7 +81,7 @@ com `*` e os pontos conhecidos aparecem com `o`.
 ## Exercicio do Drone
 
 O arquivo `exercicios/1_interpolacao_.py` resolve o problema da telemetria do
-drone usando Lagrange e Newton.
+drone usando Lagrange, Newton e Gregory-Newton.
 
 ```python
 pontos = [
@@ -88,7 +98,38 @@ Resultado esperado:
 
 ```text
 Altitude por Lagrange: 4.2391 metros
+Multiplicacoes: 20
+Adicoes/subtracoes: 45
 Altitude por Newton: 4.2391 metros
+Multiplicacoes: 8
+Adicoes/subtracoes: 28
+Altitude por Gregory-Newton: 4.2391 metros
+Multiplicacoes: 8
+Adicoes/subtracoes: 19
+```
+
+## Exercicio do Servidor
+
+O arquivo `exercicios/2_gregory_newton.py` resolve o problema do sistema de
+resfriamento de um servidor usando Gregory-Newton.
+
+```python
+pontos = [
+    (10, 45.0),
+    (20, 52.0),
+    (30, 60.0),
+    (40, 71.0),
+]
+x = 25
+h = 10
+```
+
+Resultado esperado:
+
+```text
+Temperatura por Gregory-Newton: 55.75 C
+Multiplicacoes: 6
+Adicoes/subtracoes: 13
 ```
 
 ## Como Executar
@@ -97,6 +138,12 @@ Execute o exercicio do drone:
 
 ```powershell
 python exercicios/1_interpolacao_.py
+```
+
+Execute o exercicio do servidor:
+
+```powershell
+python exercicios/2_gregory_newton.py
 ```
 
 Execute os testes:
