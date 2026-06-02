@@ -123,59 +123,40 @@ def interpolar_newton(pontos, x, contar_operacoes=False):
     return resultado
 
 
-def interpolar_gregory_newton(pontos, x, contar_operacoes=False, *, h=None):
+def interpolar_gregory_newton(pontos, x, h, contar_operacoes=False):
     """Calcula o valor interpolado pelo metodo de Gregory-Newton.
 
-    O metodo usa diferencas finitas e exige pontos igualmente espacados.
-    A forma progressiva e usada quando x esta mais proximo do inicio da
-    tabela; caso contrario, usa a forma regressiva. Quando h e informado,
-    ele e usado como espacamento e validado contra os pontos.
+    O metodo usa diferencas finitas progressivas e exige pontos igualmente
+    espacados pelo valor de h.
     """
-    # Ordena uma copia para manter a lista original intacta.
-    pontos_ordenados = sorted(pontos, key=lambda ponto: ponto[0])
-    _validar_pontos(pontos_ordenados)
+    _validar_pontos(pontos)
+    _validar_espacamento_uniforme(pontos, h)
 
     operacoes = _criar_contagem_operacoes()
-    espacamento = _validar_espacamento_uniforme(pontos_ordenados, h)
-    # A tabela guarda y, primeiras diferencas, segundas diferencas, etc.
-    tabela = _calcular_tabela_diferencas_finitas(
-        pontos_ordenados,
-        operacoes,
-    )
-
-    primeiro_x = pontos_ordenados[0][0]
-    ultimo_x = pontos_ordenados[-1][0]
-    ponto_medio = (primeiro_x + ultimo_x) / 2
-
-    # Perto do inicio, usa diferencas progressivas; perto do fim, regressivas.
-    if x <= ponto_medio:
-        resultado = tabela[0][0]
-        u = (x - primeiro_x) / espacamento
-        operacoes["adicoes"] += 1
-        indice_diferenca = 0
-        usar_progressiva = True
-    else:
-        resultado = tabela[0][-1]
-        u = (x - ultimo_x) / espacamento
-        operacoes["adicoes"] += 1
-        indice_diferenca = -1
-        usar_progressiva = False
+    diferencas = [y for _, y in pontos]
+    resultado = diferencas[0]
+    u = (x - pontos[0][0]) / h
+    operacoes["adicoes"] += 1
 
     produto = 1
 
-    # Monta os termos u, u(u-1)/2!, u(u-1)(u-2)/3! na progressiva
-    # ou u, u(u+1)/2!, u(u+1)(u+2)/3! na regressiva.
-    for ordem in range(1, len(tabela)):
-        if usar_progressiva:
-            fator = u - (ordem - 1)
-        else:
-            fator = u + (ordem - 1)
+    # Monta os termos u, u(u-1)/2!, u(u-1)(u-2)/3!, ...
+    for ordem in range(1, len(pontos)):
+        novas_diferencas = []
+
+        for indice in range(len(diferencas) - 1):
+            diferenca = diferencas[indice + 1] - diferencas[indice]
+            operacoes["adicoes"] += 1
+            novas_diferencas.append(diferenca)
+
+        diferencas = novas_diferencas
+        fator = u - (ordem - 1)
         operacoes["adicoes"] += 1
 
         produto = produto * fator / ordem
         operacoes["multiplicacoes"] += 1
 
-        parcela = tabela[ordem][indice_diferenca] * produto
+        parcela = diferencas[0] * produto
         operacoes["multiplicacoes"] += 1
 
         resultado = resultado + parcela
@@ -209,50 +190,17 @@ def _validar_pontos(pontos):
                 raise ValueError("Os valores de x dos pontos devem ser diferentes.")
 
 
-def _validar_espacamento_uniforme(pontos, h=None):
-    """Retorna o h quando todos os pontos possuem o mesmo espacamento."""
-    espacamento = pontos[1][0] - pontos[0][0]
-    tolerancia = 1e-9 * max(1, abs(espacamento))
+def _validar_espacamento_uniforme(pontos, h):
+    """Verifica se todos os pontos estao separados pelo valor de h."""
+    if h == 0:
+        raise ValueError("O valor de h deve ser diferente de zero.")
 
-    if h is not None:
-        if h == 0:
-            raise ValueError("O valor de h deve ser diferente de zero.")
+    tolerancia = 1e-9 * max(1, abs(h))
 
-        tolerancia_h = 1e-9 * max(1, abs(h))
-
-        if abs(espacamento - h) > tolerancia_h:
-            raise ValueError("O valor de h deve coincidir com os pontos.")
-
-        espacamento = h
-        tolerancia = tolerancia_h
-
-    for indice in range(2, len(pontos)):
+    for indice in range(1, len(pontos)):
         espacamento_atual = pontos[indice][0] - pontos[indice - 1][0]
 
-        if abs(espacamento_atual - espacamento) > tolerancia:
+        if abs(espacamento_atual - h) > tolerancia:
             raise ValueError(
                 "Os pontos devem ter espacamento uniforme para Gregory-Newton."
             )
-
-    return espacamento
-
-
-def _calcular_tabela_diferencas_finitas(pontos, operacoes):
-    """Monta a tabela de diferencas finitas usada por Gregory-Newton."""
-    tabela = [[y for _, y in pontos]]
-
-    for _ in range(1, len(pontos)):
-        diferencas_anteriores = tabela[-1]
-        diferencas_atuais = []
-
-        for indice in range(len(diferencas_anteriores) - 1):
-            diferenca = (
-                diferencas_anteriores[indice + 1]
-                - diferencas_anteriores[indice]
-            )
-            operacoes["adicoes"] += 1
-            diferencas_atuais.append(diferenca)
-
-        tabela.append(diferencas_atuais)
-
-    return tabela

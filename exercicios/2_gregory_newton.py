@@ -24,8 +24,8 @@ def main():
     resultado, operacoes = interpolar_gregory_newton(
         pontos,
         x,
+        h,
         contar_operacoes=True,
-        h=h,
     )
 
     print()

@@ -40,6 +40,7 @@ def main():
     resultado_gregory_newton, operacoes_gregory_newton = interpolar_gregory_newton(
         pontos,
         x,
+        1.0,
         contar_operacoes=True,
     )
 

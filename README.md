@@ -26,6 +26,7 @@ cn_p2_projeto_algoritmos/
 |   +-- plotagem.py
 +-- exercicios/
 |   +-- 1_interpolacao_.py
+|   +-- 2_gregory_newton.py
 +-- tests/
     +-- test_interpolacao.py
 ```
@@ -38,21 +39,22 @@ desconhecido a partir de pontos conhecidos.
 O metodo de Lagrange constroi um polinomio que passa por todos os pontos
 informados. O metodo de Newton usa diferencas divididas para montar o mesmo
 polinomio por coeficientes. O metodo de Gregory-Newton usa diferencas finitas
-e exige pontos igualmente espacados. Nesse metodo, `h` pode ser informado
-explicitamente.
+progressivas e exige pontos igualmente espacados pelo valor de `h`.
 
 As principais funcoes deste projeto sao:
 
 ```python
 interpolar_lagrange(pontos, x)
 interpolar_newton(pontos, x)
-interpolar_gregory_newton(pontos, x, h=10)
+interpolar_gregory_newton(pontos, x, h)
 ```
 
 Elas recebem:
 
 - `pontos`: lista de tuplas no formato `(x, y)`;
 - `x`: valor onde se deseja calcular a interpolacao.
+- `h`: espacamento constante entre os valores de `x`, usado em
+  Gregory-Newton.
 
 Tambem e possivel pedir a contagem de operacoes com
 `contar_operacoes=True`. Nesse caso a funcao retorna
