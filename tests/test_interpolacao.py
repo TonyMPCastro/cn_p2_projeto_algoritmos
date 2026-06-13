@@ -4,6 +4,8 @@ from src.interpolacao import (
     interpolar_gregory_newton,
     interpolar_lagrange,
     interpolar_newton,
+    interpolar_spline_cubica,
+    interpolar_spline_linear,
 )
 
 class TestInterpolacao(unittest.TestCase):
@@ -140,6 +142,59 @@ class TestInterpolacao(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             interpolar_gregory_newton(pontos, 25, 5)
+
+    def test_interpolar_spline_linear_com_parabola(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado = interpolar_spline_linear(pontos, 2.5)
+
+        # Linear entre (2,4) e (3,9): 4 + (9-4)/(3-2) * (2.5-2) = 6.5
+        self.assertAlmostEqual(resultado, 6.5)
+
+    def test_interpolar_spline_cubica_com_parabola(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        resultado = interpolar_spline_cubica(pontos, 2.5)
+
+        # Spline cubica natural com condicao S''=0 nas extremidades.
+        self.assertAlmostEqual(resultado, 6.3125)
+
+    def test_interpolacao_do_braco_robotico(self):
+        pontos = [
+            (0.0, 2.5),
+            (1.0, 4.5),
+            (2.0, 3.0),
+            (3.0, 6.0),
+        ]
+
+        resultado_linear = interpolar_spline_linear(pontos, 1.5)
+        resultado_cubica = interpolar_spline_cubica(pontos, 1.5)
+
+        # Linear entre (1.0, 4.5) e (2.0, 3.0): 4.5 + (3.0-4.5)/(2.0-1.0) * 0.5 = 3.75
+        self.assertAlmostEqual(resultado_linear, 3.75)
+
+        # Cubica natural deve ser diferente da linear (movimento suave).
+        self.assertNotAlmostEqual(resultado_cubica, resultado_linear, places=2)
+
+    def test_spline_linear_exige_dois_pontos(self):
+        with self.assertRaises(ValueError):
+            interpolar_spline_linear([(1, 1)], 1)
+
+    def test_spline_cubica_exige_dois_pontos(self):
+        with self.assertRaises(ValueError):
+            interpolar_spline_cubica([(1, 1)], 1)
+
+    def test_spline_linear_x_fora_do_intervalo(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        with self.assertRaises(ValueError):
+            interpolar_spline_linear(pontos, 5)
+
+    def test_spline_cubica_x_fora_do_intervalo(self):
+        pontos = [(1, 1), (2, 4), (3, 9)]
+
+        with self.assertRaises(ValueError):
+            interpolar_spline_cubica(pontos, 0)
 
 if __name__ == "__main__":
     unittest.main()

@@ -168,6 +168,171 @@ def interpolar_gregory_newton(pontos, x, h, contar_operacoes=False):
     return resultado
 
 
+def interpolar_spline_linear(pontos, x, contar_operacoes=False):
+    """Calcula o valor interpolado por Spline Linear.
+
+    Liga cada par de pontos consecutivos por uma reta. E simples e rapido,
+    mas pode gerar "quinas" nas juncoes.
+
+    Args:
+        pontos: lista de tuplas no formato (x, y), ordenada por x.
+        x: ponto onde a spline sera avaliada.
+        contar_operacoes: se True, tambem retorna a contagem de operacoes.
+
+    Returns:
+        Valor interpolado no ponto x, ou (valor, operacoes) quando
+        contar_operacoes=True.
+    """
+    _validar_pontos(pontos)
+    operacoes = _criar_contagem_operacoes()
+
+    # Encontra o intervalo [xi, xi+1] onde x esta contido.
+    indice = _encontrar_intervalo(pontos, x)
+
+    xi, yi = pontos[indice]
+    xi1, yi1 = pontos[indice + 1]
+
+    # Interpolacao linear: y = yi + (yi1 - yi) / (xi1 - xi) * (x - xi)
+    numerador = yi1 - yi
+    denominador = xi1 - xi
+    operacoes["adicoes"] += 2
+
+    resultado = yi + numerador / denominador * (x - xi)
+    operacoes["multiplicacoes"] += 1
+    operacoes["adicoes"] += 2
+
+    if contar_operacoes:
+        return resultado, operacoes
+
+    return resultado
+
+
+def interpolar_spline_cubica(pontos, x, contar_operacoes=False):
+    """Calcula o valor interpolado por Spline Cubica Natural.
+
+    Constroi polinomios cubicos entre cada par de pontos, garantindo
+    continuidade da primeira e da segunda derivada. Nas extremidades,
+    a segunda derivada e zero (condicao natural).
+
+    Args:
+        pontos: lista de tuplas no formato (x, y), ordenada por x.
+        x: ponto onde a spline sera avaliada.
+        contar_operacoes: se True, tambem retorna a contagem de operacoes.
+
+    Returns:
+        Valor interpolado no ponto x, ou (valor, operacoes) quando
+        contar_operacoes=True.
+    """
+    _validar_pontos(pontos)
+    operacoes = _criar_contagem_operacoes()
+
+    n = len(pontos)
+    xs = [p[0] for p in pontos]
+    ys = [p[1] for p in pontos]
+
+    # --- Passo 1: calcular os intervalos h entre pontos consecutivos ---
+    h = []
+    for i in range(n - 1):
+        h.append(xs[i + 1] - xs[i])
+        operacoes["adicoes"] += 1
+
+    # --- Passo 2: montar e resolver o sistema tridiagonal para c ---
+    # Condicao natural: c[0] = 0, c[n-1] = 0.
+    # Para pontos internos monta-se A*c = b.
+    c = [0.0] * n
+
+    if n > 2:
+        # Vetores do sistema tridiagonal (tamanho n-2 para pontos internos).
+        tamanho = n - 2
+        diag_inferior = [0.0] * tamanho
+        diag_principal = [0.0] * tamanho
+        diag_superior = [0.0] * tamanho
+        lado_direito = [0.0] * tamanho
+
+        for i in range(tamanho):
+            k = i + 1  # indice real do ponto interno
+            diag_principal[i] = 2.0 * (h[k - 1] + h[k])
+            operacoes["adicoes"] += 1
+            operacoes["multiplicacoes"] += 1
+
+            lado_direito[i] = (
+                3.0 * ((ys[k + 1] - ys[k]) / h[k] - (ys[k] - ys[k - 1]) / h[k - 1])
+            )
+            operacoes["adicoes"] += 3
+            operacoes["multiplicacoes"] += 1
+
+            if i > 0:
+                diag_inferior[i] = h[k - 1]
+            if i < tamanho - 1:
+                diag_superior[i] = h[k]
+
+        # Resolve com algoritmo de Thomas (eliminacao para frente + substituicao).
+        for i in range(1, tamanho):
+            fator = diag_inferior[i] / diag_principal[i - 1]
+            operacoes["multiplicacoes"] += 1
+
+            diag_principal[i] = diag_principal[i] - fator * diag_superior[i - 1]
+            operacoes["multiplicacoes"] += 1
+            operacoes["adicoes"] += 1
+
+            lado_direito[i] = lado_direito[i] - fator * lado_direito[i - 1]
+            operacoes["multiplicacoes"] += 1
+            operacoes["adicoes"] += 1
+
+        # Substituicao de volta.
+        c[tamanho] = lado_direito[tamanho - 1] / diag_principal[tamanho - 1]
+
+        for i in range(tamanho - 2, -1, -1):
+            c[i + 1] = (
+                (lado_direito[i] - diag_superior[i] * c[i + 2]) / diag_principal[i]
+            )
+            operacoes["multiplicacoes"] += 1
+            operacoes["adicoes"] += 1
+
+    # --- Passo 3: calcular coeficientes a, b, d de cada pedaco ---
+    a = ys[:]
+    b = [0.0] * (n - 1)
+    d = [0.0] * (n - 1)
+
+    for i in range(n - 1):
+        d[i] = (c[i + 1] - c[i]) / (3.0 * h[i])
+        operacoes["adicoes"] += 1
+        operacoes["multiplicacoes"] += 1
+
+        b[i] = (a[i + 1] - a[i]) / h[i] - h[i] * (2.0 * c[i] + c[i + 1]) / 3.0
+        operacoes["adicoes"] += 3
+        operacoes["multiplicacoes"] += 2
+
+    # --- Passo 4: avaliar no intervalo correto ---
+    indice = _encontrar_intervalo(pontos, x)
+    dx = x - xs[indice]
+    operacoes["adicoes"] += 1
+
+    resultado = a[indice] + b[indice] * dx + c[indice] * dx**2 + d[indice] * dx**3
+    operacoes["multiplicacoes"] += 3
+    operacoes["adicoes"] += 3
+
+    if contar_operacoes:
+        return resultado, operacoes
+
+    return resultado
+
+
+def _encontrar_intervalo(pontos, x):
+    """Encontra o indice i tal que pontos[i].x <= x <= pontos[i+1].x."""
+    if x < pontos[0][0] or x > pontos[-1][0]:
+        raise ValueError(
+            "O valor de x deve estar dentro do intervalo dos pontos fornecidos."
+        )
+
+    for i in range(len(pontos) - 1):
+        if pontos[i][0] <= x <= pontos[i + 1][0]:
+            return i
+
+    # Se x coincide com o ultimo ponto, usa o ultimo intervalo.
+    return len(pontos) - 2
+
+
 def _criar_contagem_operacoes():
     return {
         "multiplicacoes": 0,
