@@ -1,6 +1,6 @@
 import unittest
 
-from src.integracao import integral_simpson_3_8, integral_trapezios, integral_simpson_1_3
+from src.integracao import integral_simpson_3_8, integral_trapezios, integral_simpson_1_3, quadratura_gauss
 
 class TestIntegracao(unittest.TestCase):
     def test_integral_simpson_3_8_com_dados_do_exercicio(self):
@@ -69,6 +69,35 @@ class TestIntegracao(unittest.TestCase):
         
         with self.assertRaises(ValueError):
             integral_simpson_1_3(v, 0.5)
+
+    def test_quadratura_gauss_com_dados_do_exercicio(self):
+        # Exercicio 7: Trabalho do motor
+        def f_torque(x):
+            return 5 * (x**3) + (x**2) - 12*x + 4
+            
+        a, b = -1, 1
+        
+        resultado_n2 = quadratura_gauss(f_torque, a, b, n_pontos=2)
+        # Integral exata de 5x^3 + x^2 - 12x + 4 de -1 a 1:
+        # [ (5/4)x^4 + (1/3)x^3 - 6x^2 + 4x ]_(-1)^1
+        # = (5/4 + 1/3 - 6 + 4) - (5/4 - 1/3 - 6 - 4)
+        # = (1/3 - 2) - (-1/3 - 10)
+        # = 1/3 - 2 + 1/3 + 10 = 2/3 + 8 = 26/3 = 8.6666...
+        self.assertAlmostEqual(resultado_n2, 8.666666666666666)
+
+    def test_quadratura_gauss_com_n3_suportado(self):
+        def f_torque(x):
+            return 5 * (x**3) + (x**2) - 12*x + 4
+            
+        resultado_n3 = quadratura_gauss(f_torque, -1, 1, n_pontos=3)
+        self.assertAlmostEqual(resultado_n3, 8.666666666666666)
+
+    def test_quadratura_gauss_rejeita_n_nao_suportado(self):
+        def f_torque(x):
+            return x
+            
+        with self.assertRaises(ValueError):
+            quadratura_gauss(f_torque, -1, 1, n_pontos=4)
 
 if __name__ == "__main__":
     unittest.main()
